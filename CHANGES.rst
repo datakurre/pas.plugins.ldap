@@ -5,7 +5,32 @@ History
 1.5.2 (unreleased)
 ------------------
 
-- No changes yet.
+- Add hardcoded transform of 'Last, First' to 'First Last' in fullname
+  [Asko Soukka]
+
+- Hardcode limits for searches and group listings
+  [Asko Soukka]
+
+- Fix to send only bytestrings to node.ext.ldap
+  [Asko Soukka]
+
+- Optimize node.ext.ldap searches and use mapped (default) saarch attrlist to normalize searches when possible
+  [Asko Soukka]
+
+- Use bda.cache with pylibmc
+  [Asko Soukka]
+
+- Fix getGroupById to only get group details if group id is available for better performance
+  [Asko Soukka]
+
+- Fix getGroupsForPrincipal to call user.group_ids from node.ext.ldap for better performance
+  [Asko Soukka]
+
+- Wrap PAS plugin interface with ram.cache-decorators
+  [Asko Soukka]
+
+- Replace mutable interfaces with read-only ones
+  [Asko Soukka]
 
 
 1.5.1 (2016-10-18)
