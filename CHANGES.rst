@@ -2,8 +2,8 @@
 History
 =======
 
-1.5.2 (unreleased)
-------------------
+1.5.1.post1 (2016-10-20)
+------------------------
 
 - Add hardcoded transform of 'Last, First' to 'First Last' in fullname
   [Asko Soukka]
