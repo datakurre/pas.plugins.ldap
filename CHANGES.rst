@@ -2,7 +2,7 @@
 History
 =======
 
-1.5.1.post2 (unreleased)
+1.5.1.post2 (2016-10-21)
 ------------------------
 
 - Skip property sheet lookup for groups
