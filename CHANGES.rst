@@ -5,8 +5,13 @@ History
 1.5.1.post2 (unreleased)
 ------------------------
 
-- Nothing changed yet.
+- Skip property sheet lookup for groups
+  [Asko Soukka]
 
+- Optimize exact group matches to take a look at all group ids instead of doing a separate search
+  [Asko Soukka]
+- Add longer memoize for getGroupIds
+  [Asko Soukka]
 
 1.5.1.post1 (2016-10-20)
 ------------------------
