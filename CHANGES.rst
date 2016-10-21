@@ -5,7 +5,8 @@ History
 1.5.1.post3 (unreleased)
 ------------------------
 
-- Nothing changed yet.
+- Limit the length of minimal search term for users and groups
+  [Asko Soukka]
 
 
 1.5.1.post2 (2016-10-21)
@@ -18,6 +19,7 @@ History
   [Asko Soukka]
 - Add longer memoize for getGroupIds
   [Asko Soukka]
+
 
 1.5.1.post1 (2016-10-20)
 ------------------------
