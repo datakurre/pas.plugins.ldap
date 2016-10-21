@@ -279,6 +279,10 @@ class LDAPPlugin(BasePlugin):
                 return ()
         elif id:
             kw['id'] = id
+        if not exact_match and '*' in id and len(id) <= 3:
+            msg = 'Too broad search term. Please, narrow your search.'
+            IStatusMessage(self.REQUEST).add(msg, type='warning')
+            return ()
         if not kw:  # show all
             matches = groups.ids
         else:
@@ -426,6 +430,10 @@ class LDAPPlugin(BasePlugin):
         if not users:
             return tuple()
         if not exact_match:
+            if '*' in kw.values()[0] and len(kw.values()[0]) <= 4:
+                msg = 'Too broad search term. Please, narrow your search.'
+                IStatusMessage(self.REQUEST).add(msg, type='warning')
+                return ()
             for value in users.principal_attrmap.values():
                 kw[value] = kw.values()[0]
         matches = []
