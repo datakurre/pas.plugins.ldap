@@ -2,7 +2,7 @@
 History
 =======
 
-1.5.1.post3 (unreleased)
+1.5.1.post3 (2016-10-21)
 ------------------------
 
 - Limit the length of minimal search term for users and groups
