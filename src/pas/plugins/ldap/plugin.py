@@ -558,7 +558,9 @@ class LDAPPlugin(BasePlugin):
         """
         ugid = user_or_group.getId()
         try:
-            if ugid in self.getGroupIds() or self.users[ugid]:
+            if ugid in self.getGroupIds():
+                return {'title': ugid}
+            elif self.users[ugid]:
                 return LDAPUserPropertySheet(user_or_group, self)
         except KeyError:
             pass
