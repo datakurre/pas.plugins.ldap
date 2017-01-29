@@ -22,6 +22,7 @@ from pas.plugins.ldap.interfaces import VALUE_NOT_CACHED
 from pas.plugins.ldap.sheet import LDAPUserPropertySheet
 from zope.interface import implementer
 from plone.memoize import ram
+import Acquisition
 import ldap
 import logging
 import os
@@ -334,7 +335,6 @@ class LDAPPlugin(BasePlugin):
     #
     #  Determine the groups to which a user belongs.
     @security.private
-    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 10, args[0]))
     def getGroupsForPrincipal(self, principal, request=None):
         """principal -> ( group_1, ... group_N )
 
@@ -343,20 +343,21 @@ class LDAPPlugin(BasePlugin):
 
         o May assign groups based on values in the REQUEST object, if present
         """
-        groups = self.groups
-        if not groups:
-            return tuple()
+        # XXX: that's where group in group will happen, but so far group nodes
+        # do not provide membership info so we just return if there is no user
+        try:
+            isGroup = Acquisition.aq_base(principal).isGroup()
+        except AttributeError:
+            isGroup = True
+        if isGroup:
+            return EMPTY_TUPLE
+        return self._getGroupsForPrincipal(principal, request=request)
 
-        _id = principal.getId()
-
-        if _id in self.getGroupIds():  # getGroupIds is cached groups.ids
-            # XXX: that's where group in group will happen, but so far
-            # group nodes do not provide membership info so we just
-            # return if there is no user
-            return tuple()
+    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 10, args[0]))
+    def _getGroupsForPrincipal(self, principal, request=None):
         users = self.users
         try:
-            return users and users[_id].group_ids or []
+            return users and users[principal.getId()].group_ids or []
         except KeyError:
             pass
         return EMPTY_TUPLE
