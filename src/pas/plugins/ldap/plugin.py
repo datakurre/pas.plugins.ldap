@@ -31,6 +31,7 @@ logger = logging.getLogger('pas.plugins.ldap')
 zmidir = os.path.join(os.path.dirname(__file__), 'zmi')
 
 LDAP_ERROR_TIMEOUT = 300.0
+EMPTY_TUPLE = tuple()
 
 
 def manage_addLDAPPlugin(dispatcher, id, title='', RESPONSE=None, **kw):
@@ -302,7 +303,7 @@ class LDAPPlugin(BasePlugin):
                     else:
                         batch_matches, cookie = res, ''
                 except ValueError:
-                    return tuple()
+                    return EMPTY_TUPLE
                 matches += batch_matches
                 if not cookie:
                     break
@@ -358,7 +359,7 @@ class LDAPPlugin(BasePlugin):
             return users and users[_id].group_ids or []
         except KeyError:
             pass
-        return tuple()
+        return EMPTY_TUPLE
 
     # ##
     # pas_interfaces.IUserEnumerationPlugin
@@ -428,7 +429,7 @@ class LDAPPlugin(BasePlugin):
             kw['id'] = id
         users = self.users
         if not users:
-            return tuple()
+            return EMPTY_TUPLE
         if not exact_match:
             if '*' in kw.values()[0] and len(kw.values()[0]) <= 4:
                 msg = 'Too broad search term. Please, narrow your search.'
@@ -455,7 +456,7 @@ class LDAPPlugin(BasePlugin):
                 else:
                     batch_matches, cookie = res, ''
             except ValueError:
-                return tuple()
+                return EMPTY_TUPLE
             matches += batch_matches
             if not cookie:
                 break
@@ -718,7 +719,7 @@ class LDAPPlugin(BasePlugin):
                     cookie=cookie,
                 )
             except ValueError:
-                return tuple()
+                return EMPTY_TUPLE
             matches += batch_matches
             if not cookie:
                 break
