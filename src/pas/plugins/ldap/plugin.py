@@ -9,6 +9,7 @@ from Products.PluggableAuthService.interfaces import plugins as pas_interfaces
 from Products.PluggableAuthService.permissions import ManageGroups
 from Products.PluggableAuthService.permissions import ManageUsers
 from Products.PluggableAuthService.plugins.BasePlugin import BasePlugin
+from Products.CMFCore.MemberDataTool import MemberData
 from Products.statusmessages.interfaces import IStatusMessage
 from node.utils import decode
 from node.utils import encode
@@ -346,7 +347,10 @@ class LDAPPlugin(BasePlugin):
         # XXX: that's where group in group will happen, but so far group nodes
         # do not provide membership info so we just return if there is no user
         try:
-            isGroup = Acquisition.aq_base(principal).isGroup()
+            if isinstance(principal, MemberData):
+                isGroup = Acquisition.aq_base(principal.getUser()).isGroup()
+            else:
+                isGroup = Acquisition.aq_base(principal).isGroup()
         except AttributeError:
             isGroup = True
         if isGroup:
