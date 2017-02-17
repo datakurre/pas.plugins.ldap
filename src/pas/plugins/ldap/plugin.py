@@ -227,7 +227,6 @@ class LDAPPlugin(BasePlugin):
     #  Allow querying groups by ID, and searching for groups.
     #
     @security.private
-    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 10, *args, **kwargs))
     def enumerateGroups(self, id=None, exact_match=False, sort_by=None,
                         max_results=None, **kw):
         """ -> ( group_info_1, ... group_info_N )
@@ -289,26 +288,10 @@ class LDAPPlugin(BasePlugin):
         if not kw:  # show all
             matches = groups.ids
         else:
-            matches = []
-            cookie = None
-            while True:
-                try:
-                    res = groups.search(
-                        criteria=encode(kw),
-                        attrlist=None,
-                        exact_match=exact_match,
-                        page_size=self._ldap_props.page_size,
-                        cookie=cookie,
-                    )
-                    if isinstance(res, tuple):
-                        batch_matches, cookie = res
-                    else:
-                        batch_matches, cookie = res, ''
-                except ValueError:
-                    return EMPTY_TUPLE
-                matches += batch_matches
-                if not cookie:
-                    break
+            try:
+                matches = self._enumerateGroups(exact_match, **kw)
+            except ValueError:
+                return EMPTY_TUPLE
         if len(matches) >= 100:
             msg = 'Too many search results. Please, narrow your search.'
             IStatusMessage(self.REQUEST).add(msg, type='warning')
@@ -331,6 +314,30 @@ class LDAPPlugin(BasePlugin):
             ret = ret[:max_results]
         return ret
 
+    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 60, *args, **kwargs))
+    def _enumerateGroups(self, exact_match=False, **kw):
+        matches = []
+        cookie = None
+        while True:
+            res = self.groups.search(
+                criteria=encode(kw),
+                attrlist=None,
+                exact_match=exact_match,
+                page_size=self._ldap_props.page_size,
+                cookie=cookie,
+            )
+            if isinstance(res, tuple):
+                batch_matches, cookie = res
+            else:
+                batch_matches, cookie = res, ''
+            matches += batch_matches
+            if not cookie:
+                break
+        if not matches:
+            raise ValueError('No matches')
+        else:
+            return matches
+
     # ##
     # pas_interfaces.IGroupsPlugin
     #
@@ -348,23 +355,21 @@ class LDAPPlugin(BasePlugin):
         # do not provide membership info so we just return if there is no user
         try:
             if isinstance(principal, MemberData):
-                isGroup = Acquisition.aq_base(principal.getUser()).isGroup()
+                is_group = Acquisition.aq_base(principal.getUser()).isGroup()
             else:
-                isGroup = Acquisition.aq_base(principal).isGroup()
+                is_group = Acquisition.aq_base(principal).isGroup()
         except AttributeError:
-            isGroup = True
-        if isGroup:
+            is_group = True
+        if is_group:
             return EMPTY_TUPLE
-        return self._getGroupsForPrincipal(principal, request=request)
-
-    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 10, args[0]))
-    def _getGroupsForPrincipal(self, principal, request=None):
-        users = self.users
         try:
-            return users and users[principal.getId()].group_ids or []
+            return self._getGroupsForPrincipal(principal)
         except KeyError:
-            pass
-        return EMPTY_TUPLE
+            return EMPTY_TUPLE
+
+    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 60, args[0]))
+    def _getGroupsForPrincipal(self, principal):
+        return self.users and self.users[principal.getId()].group_ids or []
 
     # ##
     # pas_interfaces.IUserEnumerationPlugin
@@ -373,7 +378,6 @@ class LDAPPlugin(BasePlugin):
     #
     @ldap_error_handler('enumerateUsers')
     @security.private
-    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 10, *args, **kwargs))
     def enumerateUsers(self, id=None, login=None, exact_match=False,
                        sort_by=None, max_results=None, **kw):
         """-> ( user_info_1, ... user_info_N )
@@ -442,29 +446,10 @@ class LDAPPlugin(BasePlugin):
                 return ()
             for value in users.principal_attrmap.values():
                 kw[value] = kw.values()[0]
-        matches = []
-        cookie = None
-        while True:
-            try:
-                res = users.search(
-                    criteria=encode(kw),
-                    attrlist=exact_match and
-                    users.context.search_attrlist or ['login'],
-                    exact_match=exact_match,
-                    or_search=not exact_match,
-                    page_size=not exact_match and
-                    self._ldap_props.page_size or None,
-                    cookie=cookie,
-                )
-                if isinstance(res, tuple):
-                    batch_matches, cookie = res
-                else:
-                    batch_matches, cookie = res, ''
-            except ValueError:
-                return EMPTY_TUPLE
-            matches += batch_matches
-            if not cookie:
-                break
+        try:
+            matches = self._enumerateUsers(exact_match, **kw)
+        except ValueError:
+            return EMPTY_TUPLE
         if len(matches) >= 100:
             msg = 'Too many search results. Please, narrow your search.'
             IStatusMessage(self.REQUEST).add(msg, type='warning')
@@ -479,6 +464,33 @@ class LDAPPlugin(BasePlugin):
         if max_results and len(ret) > max_results:
             ret = ret[:max_results]
         return ret
+
+    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 60, *args, **kwargs))
+    def _enumerateUsers(self, exact_match=False, **kw):
+        matches = []
+        cookie = None
+        while True:
+            res = self.users.search(
+                criteria=encode(kw),
+                attrlist=exact_match and
+                self.users.context.search_attrlist or ['login'],
+                exact_match=exact_match,
+                or_search=not exact_match,
+                page_size=not exact_match and
+                self._ldap_props.page_size or None,
+                cookie=cookie,
+            )
+            if isinstance(res, tuple):
+                batch_matches, cookie = res
+            else:
+                batch_matches, cookie = res, ''
+            matches += batch_matches
+            if not cookie:
+                break
+        if not matches:
+            raise ValueError('No matches')
+        else:
+            return matches
 
     # ##
     # plonepas_interfaces.group.IGroupManagement
@@ -548,7 +560,6 @@ class LDAPPlugin(BasePlugin):
     #  which case the properties are not persistently mutable).
     #
     @security.private
-    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 10, args[0]))
     def getPropertiesForUser(self, user_or_group, request=None):
         """User -> IMutablePropertySheet || {}
 
@@ -565,10 +576,14 @@ class LDAPPlugin(BasePlugin):
             if ugid in self.getGroupIds():
                 return {'title': ugid}
             elif self.users[ugid]:
-                return LDAPUserPropertySheet(user_or_group, self)
+                return self._getPropertiesForUser(user_or_group)
         except KeyError:
             pass
         return {}
+
+    @ram.cache(lambda f, o, *args, **kwargs: cacheKey(f, 60, args[0]))
+    def _getPropertiesForUser(self, user_or_group):
+        return LDAPUserPropertySheet(user_or_group, self)
 
     @security.private
     def setPropertiesForUser(self, user, propertysheet):
